@@ -7,6 +7,7 @@ services:
     environment:
       - PORT=4001
       - SERVICE_NAME=user-api
+      - USERS_DATABASE_URL=${USERS_DATABASE_URL}
     ports:
       - "4001:4001"
     restart: unless-stopped
@@ -17,7 +18,7 @@ services:
     environment:
       - PORT=4002
       - SERVICE_NAME=productos-api
-      # Compose resuelve por nombre de servicio: http://users-api:4001
+      # 
       - USERS_API_URL=http://users-api:4001
     ports:
       - "4002:4002"
