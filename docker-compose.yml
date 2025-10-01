@@ -17,8 +17,8 @@ services:
     container_name: productos-api
     environment:
       - PORT=4002
-      - SERVICE_NAME=productos-api
-      # 
+      - SERVICE_NAME=products-api
+      - USERS_DATABASE_URL=${USERS_DATABASE_URL}
       - USERS_API_URL=http://users-api:4001
     ports:
       - "4002:4002"
