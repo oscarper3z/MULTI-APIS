@@ -2,19 +2,19 @@ version: "3.9"
 
 services:
   users-api:
-    build: ./user-api
-    container_name: user-api
+    build: ./users-api
+    container_name: users-api
     environment:
       - PORT=4001
-      - SERVICE_NAME=user-api
+      - SERVICE_NAME=users-api
       - USERS_DATABASE_URL=${USERS_DATABASE_URL}
     ports:
       - "4001:4001"
     restart: unless-stopped
 
   products-api:
-    build: ./productos-api
-    container_name: productos-api
+    build: ./products-api
+    container_name: products-api
     environment:
       - PORT=4002
       - SERVICE_NAME=products-api

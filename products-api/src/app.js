@@ -34,7 +34,15 @@ app.post("/products", async (req, res) => {
       "INSERT INTO products_schema.products(name, price) VALUES($1, $2) RETURNING id, name, price",
       [name, price]
     );
-    res.status(201).json(r.rows[0]);
+
+    // Convertir price a número antes de responder
+    const product = {
+      id: r.rows[0].id,
+      name: r.rows[0].name,
+      price: Number(r.rows[0].price)
+    };
+
+    res.status(201).json(product);
   } catch (e) {
     res.status(500).json({ error: "insert failed", detail: String(e) });
   }
@@ -42,9 +50,15 @@ app.post("/products", async (req, res) => {
 
 // Listar productos
 app.get("/products", async (_req, res) => {
+  console.log("👉 Entró a /products");   // <--- prueba de fuego
   try {
     const r = await pool.query("SELECT id, name, price FROM products_schema.products ORDER BY id ASC");
-    res.json(r.rows);
+    const products = r.rows.map(p => ({
+      id: p.id,
+      name: p.name,
+      price: Number(p.price) // 👈 conversión a número
+    }));
+    res.json(products);
   } catch (e) {
     res.status(500).json({ error: "query failed", detail: String(e) });
   }
@@ -56,7 +70,14 @@ app.get("/products/:id", async (req, res) => {
   try {
     const r = await pool.query("SELECT id, name, price FROM products_schema.products WHERE id = $1", [id]);
     if (r.rows.length === 0) return res.status(404).json({ error: "Product not found" });
-    res.json(r.rows[0]);
+
+    const product = {
+      id: r.rows[0].id,
+      name: r.rows[0].name,
+      price: Number(r.rows[0].price)
+    };
+
+    res.json(product);
   } catch (e) {
     res.status(500).json({ error: "query failed", detail: String(e) });
   }
@@ -74,7 +95,14 @@ app.put("/products/:id", async (req, res) => {
       [name, price, id]
     );
     if (r.rows.length === 0) return res.status(404).json({ error: "Product not found" });
-    res.json(r.rows[0]);
+
+    const product = {
+      id: r.rows[0].id,
+      name: r.rows[0].name,
+      price: Number(r.rows[0].price)
+    };
+
+    res.json(product);
   } catch (e) {
     res.status(500).json({ error: "update failed", detail: String(e) });
   }
@@ -89,24 +117,43 @@ app.delete("/products/:id", async (req, res) => {
       [id]
     );
     if (r.rows.length === 0) return res.status(404).json({ error: "Product not found" });
-    res.json({ message: "Product deleted", product: r.rows[0] });
+
+    const product = {
+      id: r.rows[0].id,
+      name: r.rows[0].name,
+      price: Number(r.rows[0].price)
+    };
+
+    res.json({ message: "Product deleted", product });
   } catch (e) {
     res.status(500).json({ error: "delete failed", detail: String(e) });
   }
 });
 
 // Endpoint combinado: productos + cantidad de usuarios desde users-api
+
 app.get("/products/with-users", async (_req, res) => {
+  console.log("👉 Entró a /products/with-users");
   try {
-    const products = await pool.query("SELECT id, name, price FROM products_schema.products ORDER BY id ASC");
-    const r = await fetch(`${USERS_API_URL}/users`);
-    const users = await r.json();
+    const r = await pool.query("SELECT id, name, price FROM products_schema.products ORDER BY id ASC");
+    console.log("📦 Products:", r.rows);
+
+    const products = r.rows.map(p => ({
+      id: p.id,
+      name: p.name,
+      price: p.price !== null ? Number(p.price) : 0   // 👈 conversión segura
+    }));
+
+    const response = await fetch(`${USERS_API_URL}/users`);
+    const users = await response.json();
+    console.log("👥 Users:", users);
 
     res.json({
-      products: products.rows,
+      products,
       usersCount: Array.isArray(users) ? users.length : 0
     });
   } catch (e) {
+    console.error("❌ Error en /products/with-users:", e);
     res.status(502).json({ error: "No se pudo consultar users-api", detail: String(e) });
   }
 });
