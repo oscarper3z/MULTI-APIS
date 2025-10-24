@@ -90,7 +90,7 @@ app.delete("/users/:id", async (req, res) => {
 });
 
 // Health service
-app.get("/health", (_req, res) => res.json({ status: "Ok", service: "users-api v3" }));
+app.get("/health", (_req, res) => res.json({ status: "Ok", service: "users-api v4" }));
 
 app.listen(PORT, () => console.log(`✅ users-api on http://localhost:${PORT}`));
 
