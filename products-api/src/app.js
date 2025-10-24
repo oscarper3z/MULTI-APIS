@@ -1,164 +1,108 @@
 import express from "express";
 import cors from "cors";
-import fetch from "node-fetch";
-import { pool } from "./db.js";
+import { Product } from "./models/product.js";
+import mongoose from "mongoose";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 4002;
-const SERVICE = process.env.SERVICE_NAME || "products-api";
-const USERS_API_URL = process.env.USERS_API_URL || "http://users-api:4001";
+// Health (sin tocar BD)
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", service: "products-api", driver: "mongoose" });
+});
 
-// Health service (general)
-app.get("/health", (_req, res) => res.json({ status: "ok", service: SERVICE }));
-
-// Health DB - prueba conexión a PostgreSQL
+// Health de BD (consulta liviana)
 app.get("/db/health", async (_req, res) => {
   try {
-    const r = await pool.query("SELECT 1 AS ok");
-    res.json({ ok: r.rows[0].ok === 1 });
+    // ping a admin:
+    await mongoose.connection.db.admin().ping();
+    res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e) });
   }
 });
 
-// Crear producto
-app.post("/products", async (req, res) => {
-  const { name, price } = req.body ?? {};
-  if (!name || !price) return res.status(400).json({ error: "name & price required" });
-
-  try {
-    const r = await pool.query(
-      "INSERT INTO products_schema.products(name, price) VALUES($1, $2) RETURNING id, name, price",
-      [name, price]
-    );
-
-    // Convertir price a número antes de responder
-    const product = {
-      id: r.rows[0].id,
-      name: r.rows[0].name,
-      price: Number(r.rows[0].price)
-    };
-
-    res.status(201).json(product);
-  } catch (e) {
-    res.status(500).json({ error: "insert failed", detail: String(e) });
-  }
-});
-
-// Listar productos
+// GET /products
 app.get("/products", async (_req, res) => {
-  console.log("👉 Entró a /products");   // <--- prueba de fuego
   try {
-    const r = await pool.query("SELECT id, name, price FROM products_schema.products ORDER BY id ASC");
-    const products = r.rows.map(p => ({
-      id: p.id,
-      name: p.name,
-      price: Number(p.price) // 👈 conversión a número
-    }));
-    res.json(products);
+    const docs = await Product.find().sort({ _id: 1 }).lean();
+    res.json(docs);
   } catch (e) {
-    res.status(500).json({ error: "query failed", detail: String(e) });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Obtener un producto por ID
+// GET /products/:id
 app.get("/products/:id", async (req, res) => {
-  const id = parseInt(req.params.id, 10);
   try {
-    const r = await pool.query("SELECT id, name, price FROM products_schema.products WHERE id = $1", [id]);
-    if (r.rows.length === 0) return res.status(404).json({ error: "Product not found" });
+    const { id } = req.params;
 
-    const product = {
-      id: r.rows[0].id,
-      name: r.rows[0].name,
-      price: Number(r.rows[0].price)
-    };
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ error: "Invalid ObjectId" });
+    }
 
-    res.json(product);
+    const doc = await Product.findById(id).lean();
+    if (!doc) return res.status(404).json({ error: "Product not found" });
+
+    res.json(doc);
   } catch (e) {
-    res.status(500).json({ error: "query failed", detail: String(e) });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Editar producto
+// POST /products
+app.post("/products", async (req, res) => {
+  try {
+    const { name, price } = req.body ?? {};
+    if (!name || price == null) {
+      return res.status(400).json({ error: "name & price required" });
+    }
+
+    const doc = await Product.create({ name, price });
+    res.status(201).json(doc);
+  } catch (e) {
+    res.status(500).json({ error: "Internal server error", detail: String(e) });
+  }
+});
+
+// PUT /products/:id
 app.put("/products/:id", async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const { name, price } = req.body ?? {};
-  if (!name && !price) return res.status(400).json({ error: "nothing to update" });
-
   try {
-    const r = await pool.query(
-      "UPDATE products_schema.products SET name = COALESCE($1, name), price = COALESCE($2, price) WHERE id = $3 RETURNING id, name, price",
-      [name, price, id]
-    );
-    if (r.rows.length === 0) return res.status(404).json({ error: "Product not found" });
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ error: "Invalid ObjectId" });
+    }
 
-    const product = {
-      id: r.rows[0].id,
-      name: r.rows[0].name,
-      price: Number(r.rows[0].price)
-    };
+    const { name, price } = req.body ?? {};
+    const doc = await Product.findByIdAndUpdate(
+      id,
+      { $set: { ...(name && { name }), ...(price != null && { price }) } },
+      { new: true }
+    ).lean();
 
-    res.json(product);
+    if (!doc) return res.status(404).json({ error: "Product not found" });
+    res.json(doc);
   } catch (e) {
-    res.status(500).json({ error: "update failed", detail: String(e) });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Eliminar producto
+// DELETE /products/:id
 app.delete("/products/:id", async (req, res) => {
-  const id = parseInt(req.params.id, 10);
   try {
-    const r = await pool.query(
-      "DELETE FROM products_schema.products WHERE id = $1 RETURNING id, name, price",
-      [id]
-    );
-    if (r.rows.length === 0) return res.status(404).json({ error: "Product not found" });
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ error: "Invalid ObjectId" });
+    }
 
-    const product = {
-      id: r.rows[0].id,
-      name: r.rows[0].name,
-      price: Number(r.rows[0].price)
-    };
+    const r = await Product.deleteOne({ _id: id });
+    if (r.deletedCount === 0) return res.status(404).json({ error: "Product not found" });
 
-    res.json({ message: "Product deleted", product });
+    res.json({ message: "Product deleted" });
   } catch (e) {
-    res.status(500).json({ error: "delete failed", detail: String(e) });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Endpoint combinado: productos + cantidad de usuarios desde users-api
-
-app.get("/products/with-users", async (_req, res) => {
-  console.log("👉 Entró a /products/with-users");
-  try {
-    const r = await pool.query("SELECT id, name, price FROM products_schema.products ORDER BY id ASC");
-    console.log("📦 Products:", r.rows);
-
-    const products = r.rows.map(p => ({
-      id: p.id,
-      name: p.name,
-      price: p.price !== null ? Number(p.price) : 0   // 👈 conversión segura
-    }));
-
-    const response = await fetch(`${USERS_API_URL}/users`);
-    const users = await response.json();
-    console.log("👥 Users:", users);
-
-    res.json({
-      products,
-      usersCount: Array.isArray(users) ? users.length : 0
-    });
-  } catch (e) {
-    console.error("❌ Error en /products/with-users:", e);
-    res.status(502).json({ error: "No se pudo consultar users-api", detail: String(e) });
-  }
-});
-
-app.listen(PORT, () => {
-  console.log(`✅ ${SERVICE} listening on http://localhost:${PORT}`);
-  console.log(`↔️  USERS_API_URL=${USERS_API_URL}`);
-});
+export default app;

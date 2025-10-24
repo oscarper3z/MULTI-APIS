@@ -9,4 +9,4 @@ COPY src ./src
 
 EXPOSE 4002
 ENV PORT=4002 SERVICE_NAME=products-api
-CMD ["node", "src/app.js"]
+CMD ["node", "src/index.js"]
