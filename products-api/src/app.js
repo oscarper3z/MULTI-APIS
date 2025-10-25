@@ -9,7 +9,7 @@ app.use(express.json());
 
 // Health (sin tocar BD)
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok", service: "products-api", driver: "mongoose v3" });
+  res.json({ status: "ok", service: "products-api", driver: "mongoose v4" });
 });
 
 // Health de BD (consulta liviana)
