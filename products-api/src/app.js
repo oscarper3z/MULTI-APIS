@@ -107,7 +107,7 @@ app.delete("/products/:id", async (req, res) => {
 
     const r = await Product.deleteOne({ _id: id });
     if (r.deletedCount === 0)
-      return res.status(404).json({ error: "Product not found" });
+      return res.status(404).json({ error: "Product not found 3" });
 
     res.json({ message: "Product deleted v2" });
   } catch (e) {
