@@ -7,6 +7,8 @@ RUN npm ci --omit=dev
 
 COPY src ./src
 
-EXPOSE 4002
-ENV PORT=4002 SERVICE_NAME=products-api
+# Cambiar puerto al que escucha la app
+ENV PORT=80 SERVICE_NAME=products-api
+EXPOSE 80
+
 CMD ["node", "src/index.js"]
