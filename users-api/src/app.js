@@ -110,5 +110,5 @@ app.delete("/users/:id", async (req, res) => {
 
 // ✅ Servidor
 app.listen(PORT, () => {
-  console.log(`✅ Users API running on port ${PORT}`);
+  console.log(`✅ Users API running on port ${PORT} v2`);
 });

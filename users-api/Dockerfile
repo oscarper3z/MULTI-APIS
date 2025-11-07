@@ -9,7 +9,7 @@ COPY src ./src
 
 # Cambiar puerto al que escucha la app
 ENV PORT=80 SERVICE_NAME=users-api
-EXPOSE 80
+EXPOSE 4001
 
 CMD ["node", "src/app.js"]
 
