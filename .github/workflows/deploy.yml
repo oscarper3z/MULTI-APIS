@@ -25,8 +25,11 @@ jobs:
             image: products-api
 
     steps:
-      - name: 📥 Checkout
+      - name: 📥 Checkout (clean)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          clean: true
 
       - name: 🔐 Azure Login (Service Principal)
         uses: azure/login@v2
@@ -46,6 +49,7 @@ jobs:
 
       - name: 🏗️ Build & Push ${{ matrix.service }}
         run: |
+          echo "🚀 Building image for ${{ matrix.service }}"
           docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ matrix.image }}:latest ${{ matrix.context }}
           docker tag  ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ matrix.image }}:latest ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ matrix.image }}:${{ steps.vars.outputs.TAG }}
           docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ matrix.image }}:latest
