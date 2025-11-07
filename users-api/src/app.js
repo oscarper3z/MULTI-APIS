@@ -3,7 +3,16 @@ import cors from "cors";
 import { pool } from "./db.js";
 
 const app = express();
-app.use(cors());
+
+// ✅ CORS abierto para todos los orígenes (Azure Container)
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
 app.use(express.json());
 
 const PORT = process.env.PORT || 4001;
@@ -21,7 +30,8 @@ app.get("/db/health", async (_req, res) => {
 // Crear usuario
 app.post("/users", async (req, res) => {
   const { name, email } = req.body ?? {};
-  if (!name || !email) return res.status(400).json({ error: "name & email required" });
+  if (!name || !email)
+    return res.status(400).json({ error: "name & email required" });
 
   try {
     const r = await pool.query(
@@ -37,7 +47,9 @@ app.post("/users", async (req, res) => {
 // Listar usuarios
 app.get("/users", async (_req, res) => {
   try {
-    const r = await pool.query("SELECT id, name, email FROM users_schema.users ORDER BY id ASC");
+    const r = await pool.query(
+      "SELECT id, name, email FROM users_schema.users ORDER BY id ASC"
+    );
     res.json(r.rows);
   } catch (e) {
     res.status(500).json({ error: "query failed", detail: String(e) });
@@ -48,8 +60,12 @@ app.get("/users", async (_req, res) => {
 app.get("/users/:id", async (req, res) => {
   const id = parseInt(req.params.id, 10);
   try {
-    const r = await pool.query("SELECT id, name, email FROM users_schema.users WHERE id = $1", [id]);
-    if (r.rows.length === 0) return res.status(404).json({ error: "User not found" });
+    const r = await pool.query(
+      "SELECT id, name, email FROM users_schema.users WHERE id = $1",
+      [id]
+    );
+    if (r.rows.length === 0)
+      return res.status(404).json({ error: "User not found" });
     res.json(r.rows[0]);
   } catch (e) {
     res.status(500).json({ error: "query failed", detail: String(e) });
@@ -60,14 +76,16 @@ app.get("/users/:id", async (req, res) => {
 app.put("/users/:id", async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const { name, email } = req.body ?? {};
-  if (!name && !email) return res.status(400).json({ error: "nothing to update" });
+  if (!name && !email)
+    return res.status(400).json({ error: "nothing to update" });
 
   try {
     const r = await pool.query(
       "UPDATE users_schema.users SET name = COALESCE($1, name), email = COALESCE($2, email) WHERE id = $3 RETURNING id, name, email",
       [name, email, id]
     );
-    if (r.rows.length === 0) return res.status(404).json({ error: "User not found" });
+    if (r.rows.length === 0)
+      return res.status(404).json({ error: "User not found" });
     res.json(r.rows[0]);
   } catch (e) {
     res.status(500).json({ error: "update failed", detail: String(e) });
@@ -82,15 +100,15 @@ app.delete("/users/:id", async (req, res) => {
       "DELETE FROM users_schema.users WHERE id = $1 RETURNING id, name, email",
       [id]
     );
-    if (r.rows.length === 0) return res.status(404).json({ error: "User not found" });
+    if (r.rows.length === 0)
+      return res.status(404).json({ error: "User not found" });
     res.json({ message: "User deleted", user: r.rows[0] });
   } catch (e) {
     res.status(500).json({ error: "delete failed", detail: String(e) });
   }
 });
 
-// Health service
-app.get("/health", (_req, res) => res.json({ status: "Ok", service: "users-api v6" }));
-
-app.listen(PORT, () => console.log(`✅ users-api on http://localhost:${PORT}`));
-
+// ✅ Servidor
+app.listen(PORT, () => {
+  console.log(`✅ Users API running on port ${PORT}`);
+});

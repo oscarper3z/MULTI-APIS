@@ -3,3 +3,6 @@ node_modules/
 
 # Ignorar variables de entorno
 .env
+
+# Ignorar frontend local
+fronted-multiapi/

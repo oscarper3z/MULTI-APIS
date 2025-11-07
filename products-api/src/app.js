@@ -4,7 +4,16 @@ import { Product } from "./models/product.js";
 import mongoose from "mongoose";
 
 const app = express();
-app.use(cors());
+
+// ✅ CORS abierto para todos los orígenes (Azure Container)
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
 app.use(express.json());
 
 // Health (sin tocar BD)
@@ -97,7 +106,8 @@ app.delete("/products/:id", async (req, res) => {
     }
 
     const r = await Product.deleteOne({ _id: id });
-    if (r.deletedCount === 0) return res.status(404).json({ error: "Product not found" });
+    if (r.deletedCount === 0)
+      return res.status(404).json({ error: "Product not found" });
 
     res.json({ message: "Product deleted" });
   } catch (e) {
